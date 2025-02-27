@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Art Editor</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+  }
+  .canvas-container {
+    border: 2px solid #ccc;
+    background-color: #fff;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .canvas {
+    display: grid;
+    cursor: crosshair;
+  }
+  .pixel {
+    width: 20px;
+    height: 20px;
+    border: 1px solid #eee;
+    box-sizing: border-box;
+  }
+  .color-picker {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .color {
+    width: 30px;
+    height: 30px;
+    margin: 5px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 5px;
+  }
+  .color.selected {
+    border-color: #000;
+  }
+  .tools {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .tools button {
+    padding: 10px 15px;
+    cursor: pointer;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+  }
+  .tools button:hover {
+    background-color: #0056b3;
+  }
+  .symmetry-tools {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .symmetry-tools button {
+    padding: 10px 15px;
+    cursor: pointer;
+    border: none;
+    background-color: #ffc107;
+    color: white;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+  }
+  .symmetry-tools button:hover {
+    background-color: #d39e00;
+  }
+  .custom-color {
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+  }
+  .custom-color input {
+    width: 100px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  .custom-color button {
+    padding: 5px 10px;
+    border: none;
+    background-color: #28a745;
+    color: white;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+  }
+  .custom-color button:hover {
+    background-color: #218838;
+  }
+  .export-options {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .export-options label {
+    margin-right: 10px;
+  }
+  .export-options select {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  .export-options button {
+    padding: 5px 10px;
+    border: none;
+    background-color: #28a745;
+    color: white;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+  }
+  .export-options button:hover {
+    background-color: #218838;
+  }
+  .tool-section {
+    margin-top: 20px;
+  }
+  .tool-section h3 {
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="canvas-container">
+    <div id="canvas" class="canvas"></div>
+  </div>
+  <div class="controls">
+    <div class="color-picker" id="color-picker"></div>
+    <div class="tool-section">
+      <h3>Basic Tools</h3>
+      <div class="tools">
+        <button onclick="clearCanvas()">Clear</button>
+        <button onclick="undo()">Undo</button>
+        <button onclick="redo()">Redo</button>
+        <button onclick="toggleGrid()">Grid</button>
+        <button onclick="increaseSize()">+</button>
+        <button onclick="decreaseSize()">-</button>
+        <button onclick="fillCanvas()">Fill</button>
+      </div>
+    </div>
+    <div class="tool-section">
+      <h3>Drawing Modes</h3>
+      <div class="tools">
+        <button onclick="togglePencil()">Pencil</button>
+        <button onclick="toggleBucket()">Bucket</button>
+        <button onclick="toggleLine()">Line</button>
+        <button onclick="toggleRectangle()">Rectangle</button>
+        <button onclick="toggleCircle()">Circle</button>
+        <button onclick="toggleEllipse()">Ellipse</button>
+        <button onclick="togglePolygon()">Polygon</button>
+      </div>
+    </div>
+    <div class="tool-section">
+      <h3>Symmetry Tools</h3>
+      <div class="symmetry-tools">
+        <button onclick="toggleHorizontalSymmetry()">Horizontal</button>
+        <button onclick="toggleVerticalSymmetry()">Vertical</button>
+        <button onclick="toggleDiagonalSymmetry()">Diagonal</button>
+      </div>
+    </div>
+    <div class="tool-section">
+      <h3>Custom Colors</h3>
+      <div class="custom-color">
+        <input type="color" id="custom-color-input" value="#000">
+        <button onclick="addCustomColor()">Add Color</button>
+      </div>
+    </div>
+    <div class="tool-section">
+      <h3>Export Options</h3>
+      <div class="export-options">
+        <label for="export-format">Export:</label>
+        <select id="export-format">
+          <option value="png">PNG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="svg">SVG</option>
+        </select>
+        <button onclick="exportImage()">Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const colorPicker = document.getElementById('color-picker');
+  let gridSize = 20;
+  let selectedColor = '#000';
+  let history = [];
+  let future = [];
+  let gridVisible = true;
+  let eyedropperMode = false;
+  let pencilMode = true;
+  let bucketMode = false;
+  let lineMode = false;
+  let rectangleMode = false;
+  let circleMode = false;
+  let ellipseMode = false;
+  let polygonMode = false;
+  let symmetryMode = false;
+  let horizontalSymmetry = false;
+  let verticalSymmetry = false;
+  let diagonalSymmetry = false;
+  let snapToGrid = false;
+  let startPixel = null;
+  let layers = [{ pixels: [], visible: true }];
+  let currentLayer = 0;
+
+  function createCanvas() {
+    canvas.innerHTML = '';
+    canvas.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const pixel = document.createElement('div');
+      pixel.classList.add('pixel');
+      pixel.addEventListener('click', (e) => handlePixelClick(e, pixel));
+      pixel.addEventListener('mouseover', (e) => {
+        if (e.buttons === 1 && (pencilMode || lineMode || rectangleMode || circleMode || ellipseMode || polygonMode)) handlePixelHover(e, pixel);
+      });
+      canvas.appendChild(pixel);
+    }
+  }
+
+  function handlePixelClick(e, pixel) {
+    if (eyedropperMode) {
+      selectedColor = pixel.style.backgroundColor || '#000';
+      document.querySelector('.color.selected').classList.remove('selected');
+      const colorDiv = document.createElement('div');
+      colorDiv.classList.add('color', 'selected');
+      colorDiv.style.backgroundColor = selectedColor;
+      colorDiv.addEventListener('click', () => {
+        document.querySelector('.color.selected').classList.remove('selected');
+        colorDiv.classList.add('selected');
+        selectedColor = colorDiv.style.backgroundColor;
+      });
+      colorPicker.appendChild(colorDiv);
+      eyedropperMode = false;
+      return;
+    }
+    if (bucketMode) {
+      fillArea(pixel, selectedColor);
+      return;
+    }
+    if (lineMode) {
+      if (!startPixel) {
+        startPixel = pixel;
+      } else {
+        drawLine(startPixel, pixel, selectedColor);
+        startPixel = null;
+      }
+      return;
+    }
+    if (rectangleMode) {
+      if (!startPixel) {
+        startPixel = pixel;
+      } else {
+        drawRectangle(startPixel, pixel, selectedColor);
+        startPixel = null;
+      }
+      return;
+    }
+    if (circleMode) {
+      if (!startPixel) {
+        startPixel = pixel;
+      } else {
+        drawCircle(startPixel, pixel, selectedColor);
+        startPixel = null;
+      }
+      return;
+    }
+    if (ellipseMode) {
+      if (!startPixel) {
+        startPixel = pixel;
+      } else {
+        drawEllipse(startPixel, pixel, selectedColor);
+        startPixel = null;
+      }
+      return;
+    }
+    if (polygonMode) {
+      if (!startPixel) {
+        startPixel = pixel;
+      } else {
+        drawPolygon(startPixel, pixel, selectedColor);
+        startPixel = null;
+      }
+      return;
+    }
+    paintPixel(pixel);
+  }
+
+  function handlePixelHover(e, pixel) {
+    if (pencilMode) {
+      paintPixel(pixel);
+    }
+    if (lineMode && startPixel) {
+      drawLine(startPixel, pixel, selectedColor, true);
+    }
+    if (rectangleMode && startPixel) {
+      drawRectangle(startPixel, pixel, selectedColor, true);
+    }
+    if (circleMode && startPixel) {
+      drawCircle(startPixel, pixel, selectedColor, true);
+    }
+    if (ellipseMode && startPixel) {
+      drawEllipse(startPixel, pixel, selectedColor, true);
+    }
+    if (polygonMode && startPixel) {
+      drawPolygon(startPixel, pixel, selectedColor, true);
+    }
+  }
+
+  function paintPixel(pixel) {
+    const prevColor = pixel.style.backgroundColor;
+    pixel.style.backgroundColor = selectedColor;
+    history.push({ layer: currentLayer, pixel, color: prevColor });
+    future = [];
+  }
+
+  function clearCanvas() {
+    Array.from(canvas.children).forEach(pixel => pixel.style.backgroundColor = '');
+    history.push({ action: 'clear', layer: currentLayer });
+    future = [];
+  }
+
+  function undo() {
+    const lastAction = history.pop();
+    if (!lastAction) return;
+    if (lastAction.action === 'clear' && lastAction.layer === currentLayer) {
+      Array.from(canvas.children).forEach(pixel => pixel.style.backgroundColor = '');
+    } else {
+      lastAction.pixel.style.backgroundColor = lastAction.color;
+      future.push(lastAction);
+    }
+  }
+
+  function redo() {
+    const nextAction = future.pop();
+    if (!nextAction) return;
+    if (nextAction.action === 'clear' && nextAction.layer === currentLayer) {
+      clearCanvas();
+    } else {
+      nextAction.pixel.style.backgroundColor = nextAction.color;
+      history.push(nextAction);
+    }
+  }
+
+  function toggleGrid() {
+    gridVisible = !gridVisible;
+    canvas.style.borderColor = gridVisible ? '#ccc' : 'transparent';
+    Array.from(canvas.children).forEach(pixel => pixel.style.border = gridVisible ? '1px solid #eee' : 'none');
+  }
+
+  function increaseSize() {
+    if (gridSize < 50) {
+      gridSize++;
+      createCanvas();
+    }
+  }
+
+  function decreaseSize() {
+    if (gridSize > 10) {
+      gridSize--;
+      createCanvas();
+    }
+  }
+
+  function fillCanvas() {
+    Array.from(canvas.children).forEach(pixel => pixel.style.backgroundColor = selectedColor);
+    history.push({ action: 'fill', color: selectedColor, layer: currentLayer });
+    future = [];
+  }
+
+  function fillArea(startPixel, color) {
+    const queue = [startPixel];
+    const targetColor = startPixel.style.backgroundColor;
+    if (targetColor === color) return;
+    while (queue.length > 0) {
+      const pixel = queue.shift();
+      if (pixel.style.backgroundColor === targetColor) {
+        pixel.style.backgroundColor = color;
+        const index = Array.from(canvas.children).indexOf(pixel);
+        const row = Math.floor(index / gridSize);
+        const col = index % gridSize;
+        if (row > 0) queue.push(canvas.children[(row - 1) * gridSize + col]);
+        if (row < gridSize - 1) queue.push(canvas.children[(row + 1) * gridSize + col]);
+        if (col > 0) queue.push(canvas.children[row * gridSize + col - 1]);
+        if (col < gridSize - 1) queue.push(canvas.children[row * gridSize + col + 1]);
+      }
+    }
+    history.push({ action: 'fillArea', startPixel, color, targetColor, layer: currentLayer });
+    future = [];
+  }
+
+  function drawLine(startPixel, endPixel, color, preview = false) {
+    const startIdx = Array.from(canvas.children).indexOf(startPixel);
+    const endIdx = Array.from(canvas.children).indexOf(endPixel);
+    const startX = startIdx % gridSize;
+    const startY = Math.floor(startIdx / gridSize);
+    const endX = endIdx % gridSize;
+    const endY = Math.floor(endIdx / gridSize);
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const steps = Math.max(Math.abs(dx), Math.abs(dy));
+    for (let i = 0; i <= steps; i++) {
+      const x = Math.round(startX + (dx * i) / steps);
+      const y = Math.round(startY + (dy * i) / steps);
+      const pixel = canvas.children[y * gridSize + x];
+      if (preview) {
+        pixel.style.backgroundColor = color;
+      } else {
+        paintPixel(pixel);
+      }
+    }
+  }
+
+  function drawRectangle(startPixel, endPixel, color, preview = false) {
+    const startIdx = Array.from(canvas.children).indexOf(startPixel);
+    const endIdx = Array.from(canvas.children).indexOf(endPixel);
+    const startX = Math.min(startIdx % gridSize, endIdx % gridSize);
+    const startY = Math.min(Math.floor(startIdx / gridSize), Math.floor(endIdx / gridSize));
+    const endX = Math.max(startIdx % gridSize, endIdx % gridSize);
+    const endY = Math.max(Math.floor(startIdx / gridSize), Math.floor(endIdx / gridSize));
+    for (let y = startY; y <= endY; y++) {
+      for (let x = startX; x <= endX; x++) {
+        const pixel = canvas.children[y * gridSize + x];
+        if (preview) {
+          pixel.style.backgroundColor = color;
+        } else {
+          paintPixel(pixel);
+        }
+      }
+    }
+  }
+
+  function drawCircle(startPixel, endPixel, color, preview = false) {
+    const startIdx = Array.from(canvas.children).indexOf(startPixel);
+    const endIdx = Array.from(canvas.children).indexOf(endPixel);
+    const centerX = (startIdx % gridSize + endIdx % gridSize) / 2;
+    const centerY = (Math.floor(startIdx / gridSize) + Math.floor(endIdx / gridSize)) / 2;
+    const radiusX = Math.abs((endIdx % gridSize - startIdx % gridSize) / 2);
+    const radiusY = Math.abs((Math.floor(endIdx / gridSize) - Math.floor(startIdx / gridSize)) / 2);
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        const dx = x - centerX;
+        const dy = y - centerY;
+        if (dx * dx / (radiusX * radiusX) + dy * dy / (radiusY * radiusY) <= 1) {
+          const pixel = canvas.children[y * gridSize + x];
+          if (preview) {
+            pixel.style.backgroundColor = color;
+          } else {
+            paintPixel(pixel);
+          }
+        }
+      }
+    }
+  }
+
+  function drawEllipse(startPixel, endPixel, color, preview = false) {
+    const startIdx = Array.from(canvas.children).indexOf(startPixel);
+    const endIdx = Array.from(canvas.children).indexOf(endPixel);
+    const centerX = (startIdx % gridSize + endIdx % gridSize) / 2;
+    const centerY = (Math.floor(startIdx / gridSize) + Math.floor(endIdx / gridSize)) / 2;
+    const radiusX = Math.abs((endIdx % gridSize - startIdx % gridSize) / 2);
+    const radiusY = Math.abs((Math.floor(endIdx / gridSize) - Math.floor(startIdx / gridSize)) / 2);
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        const dx = x - centerX;
+        const dy = y - centerY;
+        if (dx * dx / (radiusX * radiusX) + dy * dy / (radiusY * radiusY) <= 1) {
+          const pixel = canvas.children[y * gridSize + x];
+          if (preview) {
+            pixel.style.backgroundColor = color;
+          } else {
+            paintPixel(pixel);
+          }
+        }
+      }
+    }
+  }
+
+  function drawPolygon(startPixel, endPixel, color, preview = false) {
+    // Simple implementation for a triangle
+    const startIdx = Array.from(canvas.children).indexOf(startPixel);
+    const endIdx = Array.from(canvas.children).indexOf(endPixel);
+    const startX = startIdx % gridSize;
+    const startY = Math.floor(startIdx / gridSize);
+    const endX = endIdx % gridSize;
+    const endY = Math.floor(endIdx / gridSize);
+    const midX = (startX + endX) / 2;
+    const midY = startY;
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        const pixel = canvas.children[y * gridSize + x];
+        if (isPointInTriangle(x, y, startX, startY, endX, endY, midX, midY)) {
+          if (preview) {
+            pixel.style.backgroundColor = color;
+          } else {
+            paintPixel(pixel);
+          }
+        }
+      }
+    }
+  }
+
+  function isPointInTriangle(px, py, x1, y1, x2, y2, x3, y3) {
+    const d1 = (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1);
+    const d2 = (x3 - x2) * (py - y2) - (y3 - y2) * (px - x2);
+    const d3 = (x1 - x3) * (py - y3) - (y1 - y3) * (px - x3);
+    const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    return !(hasNeg && hasPos);
+  }
+
+  function togglePencil() {
+    pencilMode = true;
+    eyedropperMode = false;
+    bucketMode = false;
+    lineMode = false;
+    rectangleMode = false;
+    circleMode = false;
+    ellipseMode = false;
+    polygonMode = false;
+  }
+
+  function toggleBucket() {
+    bucketMode = true;
+    pencilMode = false;
+    eyedropperMode = false;
+    lineMode = false;
+    rectangleMode = false;
+    circleMode = false;
+    ellipseMode = false;
+    polygonMode = false;
+  }
+
+  function toggleLine() {
+    lineMode = true;
+    pencilMode = false;
+    eyedropperMode = false;
+    bucketMode = false;
+    rectangleMode = false;
+    circleMode = false;
+    ellipseMode = false;
+    polygonMode = false;
+  }
+
+  function toggleRectangle() {
+    rectangleMode = true;
+    pencilMode = false;
+    eyedropperMode = false;
+    bucketMode = false;
+    lineMode = false;
+    circleMode = false;
+    ellipseMode = false;
+    polygonMode = false;
+  }
+
+  function toggleCircle() {
+    circleMode = true;
+    pencilMode = false;
+    eyedropperMode = false;
+    bucketMode = false;
+    lineMode = false;
+    rectangleMode = false;
+    ellipseMode = false;
+    polygonMode = false;
+  }
+
+  function toggleEllipse() {
+    ellipseMode = true;
+    pencilMode = false;
+    eyedropperMode = false;
+    bucketMode = false;
+    lineMode = false;
+    rectangleMode = false;
+    circleMode = false;
+    polygonMode = false;
+  }
+
+  function togglePolygon() {
+    polygonMode = true;
+    pencilMode = false;
+    eyedropperMode = false;
+    bucketMode = false;
+    lineMode = false;
+    rectangleMode = false;
+    circleMode = false;
+    ellipseMode = false;
+  }
+
+  function toggleHorizontalSymmetry() {
+    horizontalSymmetry = !horizontalSymmetry;
+  }
+
+  function toggleVerticalSymmetry() {
+    verticalSymmetry = !verticalSymmetry;
+  }
+
+  function toggleDiagonalSymmetry() {
+    diagonalSymmetry = !diagonalSymmetry;
+  }
+
+  function addCustomColor() {
+    const customColor = document.getElementById('custom-color-input').value;
+    const colorDiv = document.createElement('div');
+    colorDiv.classList.add('color');
+    colorDiv.style.backgroundColor = customColor;
+    colorDiv.addEventListener('click', () => {
+      document.querySelector('.color.selected').classList.remove('selected');
+      colorDiv.classList.add('selected');
+      selectedColor = colorDiv.style.backgroundColor;
+    });
+    colorPicker.appendChild(colorDiv);
+  }
+
+  function exportImage() {
+    const format = document.getElementById('export-format').value;
+    const dataURL = canvas.toDataURL(`image/${format}`);
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = `pixel_art.${format}`;
+    link.click();
+  }
+
+  function initColorPicker() {
+    const colors = [
+      '#000', '#fff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff',
+      '#800000', '#808000', '#008000', '#800080', '#008080', '#c0c0c0', '#808080', '#999999',
+      '#ff69b4', '#1e90ff', '#228b22', '#daa520', '#d2691e', '#ff4500', '#2e8b57', '#ff6347',
+      '#4682b4', '#deb887', '#dc143c', '#00fa9a', '#add8e6', '#90ee90', '#dda0dd', '#ff7f50',
+      '#ff1493', '#00bfff', '#32cd32', '#ffa500', '#ff00ff', '#191970', '#ff69b4', '#8a2be2',
+      '#00ffff', '#20b2aa', '#87cefa', '#778899', '#708090', '#afeeee', '#b0c4de', '#add8e6',
+      '#87ceeb', '#1e90ff', '#6495ed', '#4682b4', '#4169e1', '#0000ff', '#0000cd', '#00008b'
+    ];
+    colors.forEach(color => {
+      const colorDiv = document.createElement('div');
+      colorDiv.classList.add('color');
+      colorDiv.style.backgroundColor = color;
+      colorDiv.addEventListener('click', () => {
+        document.querySelector('.color.selected').classList.remove('selected');
+        colorDiv.classList.add('selected');
+        selectedColor = color;
+      });
+      colorPicker.appendChild(colorDiv);
+    });
+    document.querySelector('.color').classList.add('selected');
+  }
+
+  createCanvas();
+  initColorPicker();
+</script>
+</body>
+</html>
